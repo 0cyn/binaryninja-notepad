@@ -1,0 +1,6 @@
+[submodule "binja"]
+	path = binja
+	url = git@github.com:Vector35/binaryninja-api.git
+[submodule "libkbinja"]
+	path = libkbinja
+	url = git@github.com:vr1s/libkbinja.git
