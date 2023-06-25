@@ -29,8 +29,7 @@ GlobalNotepadAreaWidget::GlobalNotepadAreaWidget(const QString& title)
     : GlobalAreaWidget(title)
 {
     auto notepad = new NotepadView(this);
-    auto layout = new QVBoxLayout();
-    setLayout(layout);
+    auto layout = new QVBoxLayout(this);
     layout->addWidget(notepad);
 }
 
@@ -43,8 +42,7 @@ NoteView::NoteView(Notepad::Note note, QWidget* parent)
     m_title = new QLabel();
     m_title->setText(QString::fromStdString(m_note.title));
     m_textEdit->setText(QString::fromStdString(note.text));
-    auto layout = new QVBoxLayout(parent);
-    setLayout(layout);
+    auto layout = new QVBoxLayout(this);
     layout->addWidget(m_title);
     layout->addWidget(m_textEdit);
 }
@@ -72,8 +70,7 @@ NotepadView::NotepadView(QWidget* parent)
     m_textEdit = new QTextEdit(this);
     connect(m_textEdit, &QTextEdit::textChanged, this, &NotepadView::onTextChanged);
     m_title = new QLabel();
-    auto layout = new QVBoxLayout(parent);
-    setLayout(layout);
+    auto layout = new QVBoxLayout(this);
     layout->addWidget(m_title);
     layout->addWidget(m_textEdit);
     layout->addStretch(1);
@@ -112,7 +109,7 @@ void NotepadView::loadNotes()
     }
 
     m_subnoteFrame = new QFrame(this);
-    m_subnoteFrame->setLayout(new QVBoxLayout());
+    new QVBoxLayout(m_subnoteFrame);
     layout()->removeItem(layout()->itemAt(layout()->count()-1));
     layout()->addWidget(m_subnoteFrame);
     qobject_cast<QVBoxLayout*>(layout())->addStretch(1);
@@ -158,6 +155,18 @@ void NotepadView::loadNotes()
 
 void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *view, const ViewLocation &location)
 {
+    if (!m_activeData)
+    {
+        // Takes dorky code to get here but this is unfortunately a valid possible state
+        if (m_subnoteFrame && m_tempNoteWidget) {
+            // Go ahead and clear stuff bc we're in a weird spot
+            m_subnoteFrame->layout()->removeWidget(m_tempNoteWidget);
+            m_tempNoteWidget->setVisible(false);
+            m_tempNoteWidget->deleteLater();
+            m_tempNoteWidget = nullptr;
+        }
+        return;
+    }
     if (m_subnoteFrame && m_tempNoteWidget) {
         m_subnoteFrame->layout()->removeWidget(m_tempNoteWidget);
         m_tempNoteWidget->setVisible(false);
@@ -170,7 +179,7 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
         layout()->removeItem(layout()->itemAt(layout()->count()-1));
         layout()->addWidget(m_subnoteFrame);
         qobject_cast<QVBoxLayout*>(layout())->addStretch(1);
-        m_subnoteFrame->setLayout(new QVBoxLayout());
+        new QVBoxLayout(m_subnoteFrame);
     }
     Notepad pad = Notepad();
     if (auto meta = m_activeData->QueryMetadata(NotepadMetadataKey))
