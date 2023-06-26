@@ -37,14 +37,19 @@ GlobalNotepadAreaWidget::GlobalNotepadAreaWidget(const QString& title)
 NoteView::NoteView(Notepad::Note note, QWidget* parent)
     : QWidget(parent), m_note(note)
 {
+    setObjectName("#noteView");
     m_textEdit = new QTextEdit(this);
     connect(m_textEdit, &QTextEdit::textChanged, this, &NoteView::onTextChanged);
     m_title = new QLabel();
     m_title->setText(QString::fromStdString(m_note.title));
+    m_title->setStyleSheet("font-weight: bold; color: white; background-color: transparent");
     m_textEdit->setText(QString::fromStdString(note.text));
+    m_textEdit->setStyleSheet("background-color: transparent;");
     auto layout = new QVBoxLayout(this);
     layout->addWidget(m_title);
     layout->addWidget(m_textEdit);
+    setAttribute(Qt::WA_StyledBackground);
+    setStyleSheet("background-color: #10ffffff; border-radius: 5px");
 }
 
 NoteView::~NoteView()
@@ -65,16 +70,21 @@ void NoteView::onTextChanged()
 NotepadView::NotepadView(QWidget* parent)
     : QWidget(parent)
 {
+    setObjectName("notepadView");
     UIContext::registerNotification(this);
 
     m_textEdit = new QTextEdit(this);
     connect(m_textEdit, &QTextEdit::textChanged, this, &NotepadView::onTextChanged);
     m_title = new QLabel();
+    m_title->setStyleSheet("font-weight: bold; background-color: transparent;");
+    m_textEdit->setStyleSheet("background-color: transparent;");
     auto layout = new QVBoxLayout(this);
     layout->addWidget(m_title);
     layout->addWidget(m_textEdit);
     layout->addStretch(1);
     m_title->setText("Init");
+    setStyleSheet("background-color: #10ffffff;"
+                  "border-radius: 5px;");
 }
 
 NotepadView::~NotepadView()
@@ -109,6 +119,7 @@ void NotepadView::loadNotes()
     }
 
     m_subnoteFrame = new QFrame(this);
+    m_subnoteFrame->setStyleSheet("background-color: transparent;");
     new QVBoxLayout(m_subnoteFrame);
     layout()->removeItem(layout()->itemAt(layout()->count()-1));
     layout()->addWidget(m_subnoteFrame);
@@ -130,7 +141,6 @@ void NotepadView::loadNotes()
             connect(noteView, &NoteView::textUpdated, this,
                     [this](const Notepad::Note note, const QString string)
                 {
-                    BNLogInfo("%s %llx %s s: %s", note.title.c_str(), note.address, note.text.c_str(), string.toStdString().c_str());
                     Notepad pad = Notepad();
                     if (auto meta = m_activeData->QueryMetadata(NotepadMetadataKey))
                         pad.LoadFromMetadata(meta);
@@ -176,6 +186,7 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
     if (!m_subnoteFrame)
     {
         m_subnoteFrame = new QFrame(this);
+        m_subnoteFrame->setStyleSheet("background-color: transparent;");
         layout()->removeItem(layout()->itemAt(layout()->count()-1));
         layout()->addWidget(m_subnoteFrame);
         qobject_cast<QVBoxLayout*>(layout())->addStretch(1);
@@ -246,7 +257,6 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
         connect(m_tempNoteWidget, &NoteView::textUpdated, this,
                 [this](const Notepad::Note note, const QString string)
                 {
-                    BNLogInfo("%s %llx %s s: %s", note.title.c_str(), note.address, note.text.c_str(), string.toStdString().c_str());
                     Notepad pad = Notepad();
                     if (auto meta = m_activeData->QueryMetadata(NotepadMetadataKey))
                         pad.LoadFromMetadata(meta);
