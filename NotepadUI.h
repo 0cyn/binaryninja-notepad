@@ -3,6 +3,7 @@
 //
 #include <binaryninjaapi.h>
 #include <QTextEdit>
+#include <qscrollarea.h>
 #include "uitypes.h"
 #include "uicontext.h"
 #include "globalarea.h"
@@ -48,6 +49,7 @@ signals:
 public slots:
     /// Resize logic and emits textUpdated.
     void onTextChanged();
+    void resizeForText();
 };
 
 /*!
@@ -59,10 +61,14 @@ class NotepadView : public QWidget, public UIContextNotification
     Q_OBJECT
 
     BinaryViewRef m_activeData;
+    QScrollArea* m_scrollArea;
+    QWidget* m_scrollAreaWidget;
     QFrame* m_subnoteFrame = nullptr;
     NoteView* m_tempNoteWidget = nullptr;
     QLabel* m_title = nullptr;
     QTextEdit* m_textEdit = nullptr;
+
+    std::unordered_map<uint64_t, NoteView*> m_noteViews;
 public:
 
     NotepadView(QWidget* parent = nullptr);
@@ -72,6 +78,9 @@ public:
     virtual void OnAddressChange(UIContext *context, ViewFrame *frame, View *view, const ViewLocation &location);
 
     void loadNotes();
+
+signals:
+    void resizeDisplayedNotes();
 
 public slots:
     void onTextChanged();

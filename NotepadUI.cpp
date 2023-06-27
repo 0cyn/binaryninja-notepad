@@ -2,6 +2,8 @@
 // Created by serket on 6/17/23.
 //
 
+#include <QScrollArea>
+#include <QScrollBar>
 #include "NotepadUI.h"
 
 void NotepadNotifications::init()
@@ -50,6 +52,10 @@ NoteView::NoteView(Notepad::Note note, QWidget* parent)
     layout->addWidget(m_textEdit);
     setAttribute(Qt::WA_StyledBackground);
     setStyleSheet("background-color: #10ffffff; border-radius: 5px");
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+
+    QSize size = m_textEdit->document()->size().toSize();
+    m_textEdit->setMinimumHeight( std::max(50, size.height() + 3 ));
 }
 
 NoteView::~NoteView()
@@ -57,10 +63,19 @@ NoteView::~NoteView()
 
 }
 
+
+void NoteView::resizeForText()
+{
+    QSize size = m_textEdit->document()->size().toSize();
+    m_textEdit->setMinimumHeight( std::max(50, size.height() + 3 ) + 40);
+    setMinimumHeight(std::max(50, size.height() + 3 ) + 40);
+}
+
 void NoteView::onTextChanged()
 {
     QSize size = m_textEdit->document()->size().toSize();
-    m_textEdit->setFixedHeight( std::max(50, size.height() + 3 ));
+    m_textEdit->setMinimumHeight( std::max(50, size.height() + 3 ) + 40);
+    setMinimumHeight(std::max(50, size.height() + 3 ) + 40);
 
     m_note.text = m_textEdit->toPlainText().toStdString();
 
@@ -72,19 +87,33 @@ NotepadView::NotepadView(QWidget* parent)
 {
     setObjectName("notepadView");
     UIContext::registerNotification(this);
+    QHBoxLayout* lyt = new QHBoxLayout(this);
 
-    m_textEdit = new QTextEdit(this);
+    m_scrollArea = new QScrollArea(this);
+    m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+    lyt->addWidget(m_scrollArea);
+
+    m_scrollAreaWidget = new QWidget(m_scrollArea);
+    m_scrollAreaWidget->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum));
+
+    m_textEdit = new QTextEdit(m_scrollArea);
     connect(m_textEdit, &QTextEdit::textChanged, this, &NotepadView::onTextChanged);
     m_title = new QLabel();
     m_title->setStyleSheet("font-weight: bold; background-color: transparent;");
     m_textEdit->setStyleSheet("background-color: transparent;");
-    auto layout = new QVBoxLayout(this);
+
+    auto layout = new QVBoxLayout(m_scrollAreaWidget);
     layout->addWidget(m_title);
     layout->addWidget(m_textEdit);
     layout->addStretch(1);
     m_title->setText("Init");
     setStyleSheet("background-color: #10ffffff;"
                   "border-radius: 5px;");
+
+    // MUST BE LAST
+    m_scrollArea->setWidget(m_scrollAreaWidget);
+    m_scrollArea->setWidgetResizable(true);
 }
 
 NotepadView::~NotepadView()
@@ -112,7 +141,7 @@ void NotepadView::onTextChanged()
 void NotepadView::loadNotes()
 {
     if (m_subnoteFrame) {
-        layout()->removeWidget(m_subnoteFrame);
+        m_scrollAreaWidget->layout()->removeWidget(m_subnoteFrame);
         m_subnoteFrame->setVisible(false);
         m_subnoteFrame->deleteLater();
         m_subnoteFrame = nullptr;
@@ -121,9 +150,9 @@ void NotepadView::loadNotes()
     m_subnoteFrame = new QFrame(this);
     m_subnoteFrame->setStyleSheet("background-color: transparent;");
     new QVBoxLayout(m_subnoteFrame);
-    layout()->removeItem(layout()->itemAt(layout()->count()-1));
-    layout()->addWidget(m_subnoteFrame);
-    qobject_cast<QVBoxLayout*>(layout())->addStretch(1);
+    m_scrollAreaWidget->layout()->removeItem(m_scrollAreaWidget->layout()->itemAt(m_scrollAreaWidget->layout()->count()-1));
+    m_scrollAreaWidget->layout()->addWidget(m_subnoteFrame);
+    qobject_cast<QVBoxLayout*>(m_scrollAreaWidget->layout())->addStretch(1);
     if (m_tempNoteWidget)
     {
         m_subnoteFrame->layout()->addWidget(m_tempNoteWidget);
@@ -138,6 +167,8 @@ void NotepadView::loadNotes()
             if (_note.type == Notepad::NoteType::FullFileNote)
                 continue;
             auto noteView = new NoteView(_note, m_subnoteFrame);
+            m_noteViews[_note.address] = noteView;
+            connect(this, &NotepadView::resizeDisplayedNotes, noteView, &NoteView::resizeForText);
             connect(noteView, &NoteView::textUpdated, this,
                     [this](const Notepad::Note note, const QString string)
                 {
@@ -165,6 +196,7 @@ void NotepadView::loadNotes()
 
 void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *view, const ViewLocation &location)
 {
+    uint64_t address;
     if (!m_activeData)
     {
         // Takes dorky code to get here but this is unfortunately a valid possible state
@@ -187,8 +219,8 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
     {
         m_subnoteFrame = new QFrame(this);
         m_subnoteFrame->setStyleSheet("background-color: transparent;");
-        layout()->removeItem(layout()->itemAt(layout()->count()-1));
-        layout()->addWidget(m_subnoteFrame);
+        m_scrollAreaWidget->layout()->removeItem(m_scrollAreaWidget->layout()->itemAt(m_scrollAreaWidget->layout()->count()-1));
+        m_scrollAreaWidget->layout()->addWidget(m_subnoteFrame);
         qobject_cast<QVBoxLayout*>(layout())->addStretch(1);
         new QVBoxLayout(m_subnoteFrame);
     }
@@ -199,11 +231,13 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
     bool needsTempAddressNote = false;
     if (location.getFunction())
     {
+        address = location.getFunction()->GetStart();
         if (!pad.GetNote(location.getFunction()).has_value())
             needsTempFunctionNote = true;
     }
     else if (location.getOffset())
     {
+        address = location.getOffset();
         if (!pad.GetNote(m_activeData, location.getOffset()).has_value())
             needsTempAddressNote = true;
     }
@@ -219,11 +253,13 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
         note.address = location.getFunction()->GetStart();
         note.type = Notepad::FunctionNote;
         m_tempNoteWidget = new NoteView(note, m_subnoteFrame);
+        m_noteViews[note.address] = m_tempNoteWidget;
+        connect(this, &NotepadView::resizeDisplayedNotes, m_tempNoteWidget, &NoteView::resizeForText);
         m_subnoteFrame->layout()->addWidget(m_tempNoteWidget);
         connect(m_tempNoteWidget, &NoteView::textUpdated, this,
                 [this](const Notepad::Note note, const QString string)
                 {
-                    BNLogInfo("%s %llx %s s: %s", note.title.c_str(), note.address, note.text.c_str(), string.toStdString().c_str());
+                    // BNLogInfo("%s %llx %s s: %s", note.title.c_str(), note.address, note.text.c_str(), string.toStdString().c_str());
                     Notepad pad = Notepad();
                     if (auto meta = m_activeData->QueryMetadata(NotepadMetadataKey))
                         pad.LoadFromMetadata(meta);
@@ -253,6 +289,8 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
         note.address = location.getOffset();
         note.type = Notepad::AddressNote;
         m_tempNoteWidget = new NoteView(note, m_subnoteFrame);
+        m_noteViews[note.address] = m_tempNoteWidget;
+        connect(this, &NotepadView::resizeDisplayedNotes, m_tempNoteWidget, &NoteView::resizeForText);
         m_subnoteFrame->layout()->addWidget(m_tempNoteWidget);
         connect(m_tempNoteWidget, &NoteView::textUpdated, this,
                 [this](const Notepad::Note note, const QString string)
@@ -274,7 +312,24 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
                     m_activeData->StoreMetadata(NotepadMetadataKey, pad.AsMetadata());
                 });
     }
+
     repaint();
+    emit resizeDisplayedNotes();
+
+    if (auto it = m_noteViews.find(address); it != m_noteViews.end())
+    {
+        if (auto noteView = it->second)
+        {
+            //m_scrollArea->verticalScrollBar()->setValue(m_scrollArea->verticalScrollBar()->value() + 10);
+            int position = 0;
+            position += noteView->y();
+            position += noteView->parentWidget()->y();
+            position += m_subnoteFrame->y();
+            BNLogError("%d", position);
+            m_scrollArea->verticalScrollBar()->setValue(position);
+            noteView->setFocus(Qt::OtherFocusReason);
+        }
+    }
 }
 
 void NotepadView::OnViewChange(UIContext *context, ViewFrame *frame, const QString &type)
@@ -315,7 +370,7 @@ void NotepadView::OnViewChange(UIContext *context, ViewFrame *frame, const QStri
         if (m_subnoteFrame)
         {
             m_subnoteFrame->setVisible(false);
-            layout()->removeWidget(m_subnoteFrame);
+            m_scrollAreaWidget->layout()->removeWidget(m_subnoteFrame);
             m_subnoteFrame->deleteLater();
             m_subnoteFrame = nullptr;
         }

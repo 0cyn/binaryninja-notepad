@@ -90,6 +90,9 @@ std::vector<Notepad::Note> Notepad::GetNotes(const Ref<BinaryView>& view)
         notes.push_back(note);
     }
 
+    // Sort by address
+    std::sort(notes.begin(), notes.end());
+
     return notes;
 }
 

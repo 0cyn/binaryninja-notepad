@@ -26,6 +26,9 @@ public:
         uint64_t address = 0;
         std::string title;
         std::string text;
+        bool operator< (const Note &b) const {
+            return address < b.address;
+        }
     };
 private:
     std::string m_fullNotes = "";
