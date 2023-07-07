@@ -221,7 +221,7 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
         m_subnoteFrame->setStyleSheet("background-color: transparent;");
         m_scrollAreaWidget->layout()->removeItem(m_scrollAreaWidget->layout()->itemAt(m_scrollAreaWidget->layout()->count()-1));
         m_scrollAreaWidget->layout()->addWidget(m_subnoteFrame);
-        qobject_cast<QVBoxLayout*>(layout())->addStretch(1);
+        qobject_cast<QVBoxLayout*>(m_scrollAreaWidget->layout())->addStretch(1);
         new QVBoxLayout(m_subnoteFrame);
     }
     Notepad pad = Notepad();
@@ -325,9 +325,8 @@ void NotepadView::OnAddressChange(UIContext *context, ViewFrame *frame, View *vi
             position += noteView->y();
             position += noteView->parentWidget()->y();
             position += m_subnoteFrame->y();
-            BNLogError("%d", position);
             m_scrollArea->verticalScrollBar()->setValue(position);
-            noteView->setFocus(Qt::OtherFocusReason);
+            //noteView->setFocus(Qt::OtherFocusReason);
         }
     }
 }

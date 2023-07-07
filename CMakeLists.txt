@@ -13,7 +13,7 @@ project(${PLUGIN_NAME})
 # BinaryNinja API Directory
 set(BINJA_API_DIR ${PROJECT_SOURCE_DIR}/binja)
 
-add_subdirectory(${BINJA_API_DIR})
+add_subdirectory(libkbinja)
 # add_subdirectory(Views)
 
 include_directories(${CMAKE_SOURCE_DIR})
@@ -35,6 +35,7 @@ file (GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
 list(FILTER SRC_FILES EXCLUDE REGEX "${BINJA_API_DIR}/.*")
 list(FILTER SRC_FILES EXCLUDE REGEX "cmake.*")
 list(FILTER SRC_FILES EXCLUDE REGEX "binja.*")
+list(FILTER SRC_FILES EXCLUDE REGEX "libkbinja.*")
 
 set(PLUGIN_SOURCE ${SRC_FILES})
 set("${CMAKE_C_FLAGS} -include${PROJECT_SOURCE_DIR}/Prefix.h")
@@ -45,7 +46,7 @@ find_package(QT NAMES Qt6 COMPONENTS Widgets REQUIRED)
 find_package(Qt6 COMPONENTS Widgets REQUIRED)
 
 add_library(${PLUGIN_NAME} SHARED ${PLUGIN_SOURCE})
-target_link_libraries(${PLUGIN_NAME} binaryninjaapi binaryninjaui Qt6::Core Qt6::Gui Qt6::Widgets)
+target_link_libraries(${PLUGIN_NAME} binaryninjaapi binaryninjaui libkbinja Qt6::Core Qt6::Gui Qt6::Widgets)
 target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_20 c_std_99)
 target_compile_definitions(${PLUGIN_NAME} PRIVATE
         DEV_MODE=${DEV_MODE})
