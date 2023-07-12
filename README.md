@@ -1,6 +1,14 @@
 C++ Notepad plugin for BinaryNinja, supporting function/address specific notes
 combined into a global pad per-binary.
 
+---
+
+<p align=center>
+<img src=".github/eg.png" alt="plugin in action">
+</p> 
+
+---
+
 WIP
 
 ---
