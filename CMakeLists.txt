@@ -1,70 +1,93 @@
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 # Plugin Name
-set(PLUGIN_NAME bnNotepad)
+set(PLUGIN_NAME binaryninja-notepad)
 
-# You may need to replace this with your path
-set(CMAKE_PREFIX_PATH "$ENV{HOME}/Qt/6.4.1/clang_64/lib/cmake")
+set(PLUGIN_SOURCE Standalone.cpp Notepad.cpp Notepad.h )
+set(UI_PLUGIN_SOURCE NotepadUI.cpp NotepadUI.h )
 
 # Non-user-serviceable parts below ---------------------------------------------
+
+if (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Darwin")
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
+endif ()
 
 project(${PLUGIN_NAME})
 
 # BinaryNinja API Directory
-set(BINJA_API_DIR ${PROJECT_SOURCE_DIR}/binja)
+set(BINJA_API_DIR ${PROJECT_SOURCE_DIR}/binaryninja-api)
 
-add_subdirectory(libkbinja)
-# add_subdirectory(Views)
-
+add_subdirectory(${BINJA_API_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
 
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+set(_UI_PLUGIN_SOURCES )
+set(UI_PLUGIN_LIBRARIES )
+set(UI_COMPILE_DEFS )
 
-set(CMAKE_REQUIRED_LINK_OPTIONS "-arch arm64")
-set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE INTERNAL "" FORCE)
+if (UI_BUILD)
 
-file (GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
-        ${PROJECT_SOURCE_DIR}/*.h
-        ${PROJECT_SOURCE_DIR}/*.hpp
-        ${PROJECT_SOURCE_DIR}/*.c
-        ${PROJECT_SOURCE_DIR}/*.cpp
-        )
+    if(NOT DEFINED CMAKE_PREFIX_PATH)
+        if(APPLE)
+            set(CMAKE_PREFIX_PATH "$ENV{HOME}/Qt/6.4.3/clang_64/lib/cmake")
+        elseif(MSVC) # doesnt work on gh runners
+            set(CMAKE_PREFIX_PATH "$ENV{HOME}/Qt/6.4.3/msvc2022_64/lib/cmake")
+        else()
+            set(CMAKE_PREFIX_PATH "$ENV{HOME}/Qt/6.4.3/gcc_64/lib/cmake")
+        endif()
+    endif()
 
-list(FILTER SRC_FILES EXCLUDE REGEX "${BINJA_API_DIR}/.*")
-list(FILTER SRC_FILES EXCLUDE REGEX "cmake.*")
-list(FILTER SRC_FILES EXCLUDE REGEX "binja.*")
-list(FILTER SRC_FILES EXCLUDE REGEX "libkbinja.*")
+    message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTORCC ON)
+    set(CMAKE_AUTOUIC ON)
 
-set(PLUGIN_SOURCE ${SRC_FILES})
-set("${CMAKE_C_FLAGS} -include${PROJECT_SOURCE_DIR}/Prefix.h")
+    set(_UI_PLUGIN_SOURCES ${UI_PLUGIN_SOURCE})
+    set(UI_PLUGIN_LIBRARIES Qt6::Core Qt6::Gui Qt6::Widgets)
+    set(UI_COMPILE_DEFS UI_BUILD=1)
 
-find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
+    find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
 
-find_package(QT NAMES Qt6 COMPONENTS Widgets REQUIRED)
-find_package(Qt6 COMPONENTS Widgets REQUIRED)
+    find_package(QT NAMES Qt6 COMPONENTS Widgets REQUIRED)
+    find_package(Qt6 COMPONENTS Widgets REQUIRED)
 
-add_library(${PLUGIN_NAME} SHARED ${PLUGIN_SOURCE})
-target_link_libraries(${PLUGIN_NAME} binaryninjaapi binaryninjaui libkbinja Qt6::Core Qt6::Gui Qt6::Widgets)
-target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_20 c_std_99)
-target_compile_definitions(${PLUGIN_NAME} PRIVATE
-        DEV_MODE=${DEV_MODE})
-target_include_directories(${PLUGIN_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/Shared/cereal/include ${PROJECT_SOURCE_DIR}/API)
-# Library targets linking against the Binary Ninja API need to be compiled with
-# position-independent code on Linux.
+endif()
+
+set(_PLUGIN_SOURCE ${PLUGIN_SOURCE} ${_UI_PLUGIN_SOURCES})
+
+set("${CMAKE_C_FLAGS} -include${PROJECT_SOURCE_DIR}/ProjectDefinitions.h")
+
+add_library(${PLUGIN_NAME} SHARED ${_PLUGIN_SOURCE})
+
+set(CMAKE_CXX_STANDARD 17)
+target_compile_definitions(${PLUGIN_NAME} PRIVATE DEV_MODE=${DEV_MODE} ${UI_COMPILE_DEFS})
+
+if(APPLE)
+    target_link_options(${PLUGIN_NAME} PUBLIC -undefined dynamic_lookup)
+elseif(MSVC)
+    target_link_options(${PLUGIN_NAME} PUBLIC "LINKER:/FORCE:UNRESOLVED")
+else()
+    target_link_options(${PLUGIN_NAME} PUBLIC "LINKER:--allow-shlib-undefined")
+endif()
+target_link_libraries(${PLUGIN_NAME} binaryninjaapi ${UI_PLUGIN_LIBRARIES})
+
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     target_compile_options(${PLUGIN_NAME} PRIVATE "-fPIC")
 endif()
 
-list(APPEND fcl ${SRC_FILES})
+list(APPEND fcl ${_PLUGIN_SOURCE})
 list(LENGTH fcl file_count)
 message(STATUS "")
-message(STATUS "BinaryNinja UI Plugin Config -=-=-=-======")
+
+if (UI_BUILD)
+    message(STATUS "BinaryNinja UI Plugin Config -=-=-=-======")
+else()
+    message(STATUS "BinaryNinja Headless Plugin Config -=-=-=-======")
+endif()
+
 message(STATUS "Project Name: ${PLUGIN_NAME}")
 message(STATUS "Tracked Source Files: ${file_count}")
-# message(STATUS "${SRC_FILES}")
 message(STATUS "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-======")
+
 message(STATUS "")
 
 # Support cmake --install

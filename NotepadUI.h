@@ -4,9 +4,9 @@
 #include <binaryninjaapi.h>
 #include <QTextEdit>
 #include <qscrollarea.h>
-#include "uitypes.h"
-#include "uicontext.h"
-#include "globalarea.h"
+#include "binaryninja-api/ui/uitypes.h"
+#include "binaryninja-api/ui/uicontext.h"
+#include "binaryninja-api/ui/globalarea.h"
 #include "Notepad.h"
 
 using namespace BinaryNinja;

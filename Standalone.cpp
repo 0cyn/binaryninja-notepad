@@ -1,6 +1,9 @@
 #include <binaryninjaapi.h>
-#include <uitypes.h>
+
+#ifdef UI_BUILD
 #include "NotepadUI.h"
+#include "binaryninja-api/ui/uitypes.h"
+#endif
 
 extern "C" {
 
@@ -11,11 +14,13 @@ BINARYNINJAPLUGIN bool CorePluginInit() {
     return true;
 }
 
+#ifdef UI_BUILD
 BINARYNINJAPLUGIN bool UIPluginInit() {
 
     NotepadNotifications::init();
 
     return true;
 }
+#endif
 
 }
