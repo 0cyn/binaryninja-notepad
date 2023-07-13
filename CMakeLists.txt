@@ -18,6 +18,7 @@ project(${PLUGIN_NAME})
 set(BINJA_API_DIR ${PROJECT_SOURCE_DIR}/binaryninja-api)
 
 add_subdirectory(${BINJA_API_DIR})
+add_subdirectory(libkbinja)
 include_directories(${CMAKE_SOURCE_DIR})
 
 set(_UI_PLUGIN_SOURCES )

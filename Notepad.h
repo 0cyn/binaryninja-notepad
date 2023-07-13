@@ -7,9 +7,6 @@
 #define BNNOTEPAD_NOTEPAD_H
 
 
-std::string formatAddress(uint64_t address, uint8_t padSize = 8);
-
-
 const std::string NotepadMetadataKey = "BNNotepad-MetadataStore";
 
 

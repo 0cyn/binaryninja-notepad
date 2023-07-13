@@ -4,6 +4,7 @@
 
 #include <QScrollArea>
 #include <QScrollBar>
+#include <libkbinja/hex.h>
 #include "NotepadUI.h"
 
 void NotepadNotifications::init()

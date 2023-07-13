@@ -3,6 +3,7 @@
 //
 
 #include "Notepad.h"
+#include <libkbinja/hex.h>
 
 #include <algorithm>
 #include <utility>
